@@ -1,0 +1,37 @@
+server:
+  port: 9022
+  error:
+    include-message: always
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: redispass
+spring:
+  application:
+    name: eplan-user
+  security:
+    user:
+      name: eplanuser
+      password: eplanuser@123
+  datasource:
+      driver-class-name: com.mysql.jdbc.Driver
+      url: jdbc:mysql://localhost:3306/eplan-user
+      username: eplanuser
+      password: eplanuser@123
+  jpa:
+    show-sql: true
+    hibernate:
+      dialect: org.hibernate.dialect.MySQL5Dialect
+      ddl-auto: update
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:9020/eureka/
+eplan:
+  jwt:
+    expiration: 7200
+    secret: x_ba4loNk!_#
+  user:
+    session: 
+      login: 3600
+    password: eplanuSer#150

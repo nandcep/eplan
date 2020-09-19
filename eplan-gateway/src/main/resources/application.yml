@@ -1,0 +1,31 @@
+server:
+  port: 9021
+  error:
+    include-message: always
+redis:
+  host: 127.0.0.1
+  port: 6379
+  password: redispass
+spring:
+  application:
+    name: eplan-gateway
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:9020/eureka/
+zuul:
+  sensitive-headers:
+  routes:
+    eplan-user:
+      path: /api/user/**
+      serviceId: eplan-user
+eplan:
+  jwt:
+    secret: x_ba4loNk!_#
+  path:
+    ignores:
+      - /swagger
+      - /v2
+      - /webjars
+      - /api/user/v1/sign-out
+      - /api/user/v1/sign-in
