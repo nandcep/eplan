@@ -17,6 +17,14 @@ public class CacheUtility {
     @Autowired
     private RedisClient redisClient;
 
+    public void delete(String prefix, String key){
+        StatefulRedisConnection<String, String> connection = redisClient.connect();
+        RedisCommands<String, String> syncCommand = connection.sync();
+        String pair = prefix + ":" + key;
+        syncCommand.del(pair);
+        connection.close();
+    }
+
     public void set(String prefix, String key, String value, Integer expiration){
         StatefulRedisConnection<String, String> connection = redisClient.connect();
         RedisCommands<String, String> syncCommand = connection.sync();
