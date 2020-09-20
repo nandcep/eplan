@@ -31,6 +31,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.SignatureException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -45,7 +48,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
-	public static final String ROOT_URI = "/api/user";
+	private static final String ROOT_URI = "/api/user";
 
     @Autowired
 	private UserDetailService userDetailService;
@@ -58,6 +61,11 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
 	@Autowired
 	private CacheUtility cacheUtility;
+
+	private String [] ignoreApis = { 
+		"/v1/sign-in",
+		"/v1/sign-out" 
+	};
 
 	@Override
 	public void configure(final AuthenticationManagerBuilder authenticationManagerBuilder) throws Exception {
@@ -72,10 +80,7 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 
 	@Override
 	protected void configure(HttpSecurity http) throws Exception {		
-		http.cors().and().csrf().disable().
-			authorizeRequests()
-			.antMatchers("/v1/sign-in").permitAll();
-		http.authorizeRequests().antMatchers("/v1/create").authenticated();
+		http.cors().and().csrf().disable().authorizeRequests().antMatchers("/v**").authenticated();
         http.addFilterBefore(serviceFilter(), UsernamePasswordAuthenticationFilter.class);
 	}
 	
@@ -90,13 +95,25 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 					String token = webUtility.getCookie(request, "Authorization");
 					log.info("token = {}", token);
 					log.info("userId = {}", userId);
-					if(StringUtils.isEmpty(userId) || StringUtils.isEmpty(token)) {
+					Boolean isIgnored = false;
+					for (String ignoreApi : ignoreApis) {
+						if(request.getRequestURI().contains(ignoreApi)){
+							isIgnored = true;
+						}
+					}
+					if(StringUtils.isEmpty(userId) || StringUtils.isEmpty(token) || isIgnored) {
 						SecurityContextHolder.getContext().setAuthentication(null);
 					}
 					else{
 						String usernameEncode = null;
 						try{
-							usernameEncode = userUtility.getJwtClaim(token).getBody().getSubject();
+							Jws<Claims> claims = userUtility.getJwtClaim(token);
+							if(claims == null){
+								log.error("JWT claim is null");
+								response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized access");
+								return;
+							}
+							usernameEncode = claims.getBody().getSubject();
 						}
 						catch(SignatureException se){
 							log.error("SignatureException = {}", se);

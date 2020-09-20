@@ -34,4 +34,5 @@ eplan:
   user:
     session: 
       login: 3600
+      loginRemembered: 18000
     password: eplanuSer#150

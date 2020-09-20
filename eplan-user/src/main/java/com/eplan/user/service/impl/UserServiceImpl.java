@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,10 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jws;
+import io.jsonwebtoken.SignatureException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -53,6 +58,9 @@ public class UserServiceImpl implements UserService {
 
     @Value("${eplan.user.session.login}")
     private Integer eplanUserSessionLogin;
+
+    @Value("${eplan.user.session.loginRemembered}")
+    private Integer eplanUserSessionLoginRemembered;
 
     @Autowired
     private AuthenticationManager authenticationManager;
@@ -213,7 +221,7 @@ public class UserServiceImpl implements UserService {
         ObjectMapper mapper = new ObjectMapper();
         try {
             this.cacheUtility.set("USERLOGIN", userLoginDto.getUsername(),
-                    mapper.writeValueAsString(userLoginDto), this.eplanUserSessionLogin);
+                    mapper.writeValueAsString(userLoginDto), (request.getIsRemember()) ? this.eplanUserSessionLoginRemembered : this.eplanUserSessionLogin);
         } catch (JsonProcessingException e) {
             this.webUtility.doThrowResponseException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -233,9 +241,42 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public Boolean signOut(Long currentUserId) {
-        // TODO Auto-generated method stub
-        return null;
+    public Boolean signOut(Long currentUserId, String token) {
+        String usernameEncode = null;
+        try{
+            Jws<Claims> claims = userUtility.getJwtClaim(token);
+            if(claims == null){
+                log.error("JWT claim is null");
+                return false;
+            }
+            usernameEncode = claims.getBody().getSubject();
+        }
+        catch(SignatureException se){
+            log.error("SignatureException = {}", se);
+            return false;
+        }
+        Base64 base64 = new Base64();
+        String decodedUsername = new String(base64.decode(usernameEncode.getBytes()));
+        String userLoginCache = cacheUtility.get("USERLOGIN", decodedUsername);
+        if(StringUtils.isEmpty(userLoginCache)){
+            log.error("userLoginCache is not found, failed to sign out");
+            return false;
+        }
+        try {
+            UserLoginDto userLoginDto = new ObjectMapper().readValue(userLoginCache, UserLoginDto.class);
+            if(userLoginDto.getId() != Long.valueOf(currentUserId)){
+                log.error("userLoginDto.getId() unmatch with currentUserId = {} - {}", userLoginDto.getId(), currentUserId);
+                return false;
+            }
+        } catch (JsonMappingException e) {
+            log.error("JsonMappingException = {}", e.getMessage());
+            return false;
+        } catch (JsonProcessingException e) {
+            log.error("JsonProcessingException = {}", e.getMessage());
+            return false;
+        }
+        this.cacheUtility.delete("USERLOGIN", decodedUsername);
+        return true;
     }
 
     @Override

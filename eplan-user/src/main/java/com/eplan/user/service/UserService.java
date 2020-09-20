@@ -26,7 +26,7 @@ public interface UserService {
     public UserDto getUserByUsername(String username);
     public UserDto getFetchToDto(User mapper);
     public UserLoginDto signIn(UserLoginRequest request, Authentication authentication);
-    public Boolean signOut(Long currentUserId);
+    public Boolean signOut(Long currentUserId, String token);
     //public Boolean updatePassword(UpdatePasswordRequest request, Long loggedUser);
     //public Boolean updatePassword(UpdatePasswordRequest request);
     //public void doRequestForgotPassword(ForgotPasswordRequest request);

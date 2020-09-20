@@ -69,7 +69,13 @@ public class PathFilter extends ZuulFilter {
             } else {
                 String usernameEncode = null;
                 try {
-                    usernameEncode = this.getJwtClaim(token).getBody().getSubject();
+                    Jws<Claims> claims = this.getJwtClaim(token);
+                    if(claims == null){
+                        log.error("JWT claims is null ");
+                        this.doThrow401(response, requestContext);
+                        return null;
+                    }
+                    usernameEncode = claims.getBody().getSubject();
                 } catch (SignatureException se) {
                     log.error("SignatureException = {}", se);
                     this.doThrow401(response, requestContext);
@@ -106,6 +112,7 @@ public class PathFilter extends ZuulFilter {
                 for (String permission : userLoginDto.getPermissions()){
                     log.info("permission [{}] = request.getRequestURI [{}] ", permission, request.getRequestURI());
                     if(request.getRequestURI().contains(permission)){
+                        this.cacheUtility.set("GWAUTH", request.getHeader("userId"), userLoginDto.getUsername(), null);
                         isGranted = true;
                         break;
                     }
@@ -134,6 +141,9 @@ public class PathFilter extends ZuulFilter {
     }
 
     private Jws<Claims> getJwtClaim(String token){
+        if(StringUtils.isEmpty(token)){
+            return null;
+        }
         return Jwts.parser().setSigningKey(eplanJwtSecret).parseClaimsJws(token);
     }
 

@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 /**
 * @author  Adinandra Dharmasurya
@@ -55,6 +56,9 @@ public class UserUtility {
     }
 
     public Jws<Claims> getJwtClaim(String token){
+        if(StringUtils.isEmpty(token)){
+            return null;
+        }
         return Jwts.parser().setSigningKey(eplanJwtSecret).parseClaimsJws(token);
     }
     
